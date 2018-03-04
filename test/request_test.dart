@@ -1,6 +1,7 @@
 import 'package:apicase/apicase.dart';
 import 'package:test/test.dart';
 import 'dart:convert';
+import 'middleware.dart';
 
 void main() {
   group('A group of tests', () {
@@ -17,7 +18,7 @@ void main() {
       expect(request.responses, isEmpty);
     });
 
-    test('Testing fluent with makeClosure, and one request', () async {
+    test('Test fluent with makeClosure, and one request', () async {
       Response response;
       await request.fluent((r) => r.get(serverUrl)).makeClosure((List<Response> responses) async {
         response = await responses.first;
@@ -26,7 +27,7 @@ void main() {
       expect(response.statusCode, equals(200));
     });
 
-    test('Testing fluent with makeClosure, and two requests', () async {
+    test('Test fluent with makeClosure, and two requests', () async {
       List<Response> responses;
 
       await request
@@ -45,7 +46,7 @@ void main() {
       expect(responses[1].statusCode, equals(200));
     });
 
-    test('Testing fluent with make, and one request', () async {
+    test('Test fluent with make, and one request', () async {
       void handler(Request r) {
         expect(r.responses, isNotEmpty);
         expect(r.responses.first.statusCode, equals(200));
@@ -59,7 +60,7 @@ void main() {
       await request.fluent((r) => r.get(serverUrl)).make(handler);
     });
 
-    test('Testing fluent with make, and two requests', () async {
+    test('Test fluent with make, and two requests', () async {
       void handler(Request r) {
         expect(r.responses, isNotEmpty);
         expect(r.responses.length, equals(2));
@@ -77,7 +78,7 @@ void main() {
           .make(handler);
     });
 
-    test('Testing validateStatus with common request', () async {
+    test('Test validateStatus with common request', () async {
       Response response;
 
       await request
@@ -88,7 +89,7 @@ void main() {
       expect(response.statusCode, equals(200));
     });
 
-    test('Testing validateStatus with fluent one request', () async {
+    test('Test validateStatus with fluent one request', () async {
       Response response;
 
       await request
@@ -100,7 +101,7 @@ void main() {
       expect(response.statusCode, equals(200));
     });
 
-    test('Testing validateStatus with fluent two requests', () async {
+    test('Test validateStatus with fluent two requests', () async {
       List<Response> responses;
 
       await request
@@ -117,7 +118,7 @@ void main() {
       expect(responses[1].statusCode, equals(200));
     });
 
-    test('Testing exception validateStatus with fluent and one request', () async {
+    test('Test exception validateStatus with fluent and one request', () async {
       var error;
 
       await request
@@ -130,7 +131,7 @@ void main() {
       expect(error is BadStatusCode, isTrue);
     });
 
-    test('Testing exception on second validateStatus with fluent and two requests', () async {
+    test('Test exception on second validateStatus with fluent and two requests', () async {
       var error;
 
       await request
@@ -150,7 +151,7 @@ void main() {
                     )}/first_url.'));
     });
 
-    test('Testing exception on first validateStatus with fluent and two requests', () async {
+    test('Test exception on first validateStatus with fluent and two requests', () async {
       var error;
 
       await request
@@ -166,6 +167,92 @@ void main() {
       expect(error.toString(),
           equals('Bad state: Status code is not the same with 200. Url: ${serverUrl.toString(
                     )}.'));
+    });
+
+    test('Test middleware without error, fluent and one validateStatus', () async {
+      var response;
+
+      await request
+          .middleware([new MiddlewareWithoutError()])
+          .fluent((r) => r.validateStatus((status) => 200 == status).get(serverUrl))
+          .fluent((r) => r.get(serverUrl.toString() + '/first_url'))
+          .makeClosure((res) {
+            response = res;
+          });
+
+      expect(response, isNotNull);
+    });
+
+    test('Test middleware with error, fluent', () async {
+      var error;
+
+      await request
+          .middleware([new MiddlewareWithStringError()])
+          .fluent((r) => r.get(serverUrl))
+          .fluent((r) => r.get(serverUrl.toString() + '/first_url'))
+          .makeClosure((_) => 1)
+          .catchError((e) {
+            error = e;
+          });
+
+      expect(error, isNotNull);
+      expect(error.toString(), equals('Middleware with string error, bzzz...'));
+    });
+
+    test('Test middleware without error and common request', () async {
+      var response;
+
+      await request
+          .middleware([new MiddlewareWithoutError()])
+          .get(serverUrl.toString() + '/first_url')
+          .then((res) {
+            response = res;
+          });
+
+      expect(response, isNotNull);
+    });
+
+    test('Test middleware with string error and common request', () async {
+      var error;
+
+      await request
+          .middleware([new MiddlewareWithStringError()])
+          .get(serverUrl.toString() + '/first_url')
+          .then((_) => 1)
+          .catchError((e) {
+            error = e;
+          });
+
+      expect(error.toString(), 'Middleware with string error, bzzz...');
+    });
+
+    test('Test middleware with exception error and common request', () async {
+      var error;
+
+      await request
+          .middleware([new MiddlewareWithException()])
+          .get(serverUrl.toString() + '/first_url')
+          .then((_) => 1)
+          .catchError((e) {
+            error = e;
+          });
+
+      expect(error.toString(), 'Bad state: Exception by MiddlewareException from apicase');
+    });
+
+    test('Test middleware with string error, fluent and one validateStatus', () async {
+      var error;
+
+      await request
+          .middleware([new MiddlewareWithStringError()])
+          .fluent((r) => r.validateStatus((status) => 200 == status).get(serverUrl))
+          .fluent((r) => r.get(serverUrl.toString() + '/first_url'))
+          .makeClosure((_) => 1)
+          .catchError((e) {
+            error = e;
+          });
+
+      expect(error.toString(), equals('Middleware with string error, bzzz...'));
     });
   });
 }
