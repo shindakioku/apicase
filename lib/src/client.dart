@@ -1,6 +1,7 @@
 import 'request.dart';
 import 'url_storage.dart';
 import 'client_exception.dart';
+import 'middleware.dart';
 
 import 'dart:mirrors';
 import 'dart:async';
@@ -26,9 +27,13 @@ class _Client implements Client {
 
   List<Url> get urls => _storage.urls;
 
+  // {'name': 'url_name', 'middleware': [new SomeClass()]}
+  Map<String, List<Middleware>> _middleware;
+
   _Client() {
     _request = new Request();
     _storage = new UrlStorage();
+    _middleware = {};
   }
 
   Future<Response> makeRequest(String name) {
@@ -55,7 +60,7 @@ class _Client implements Client {
     List<Future<Response>> responses = [];
 
     await _storage.urls.forEach((u) async {
-      responses.add(u.closure(_request));
+      await responses.add(u.closure(_request));
     });
 
     return responses;

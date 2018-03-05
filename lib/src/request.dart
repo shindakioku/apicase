@@ -26,6 +26,8 @@ abstract class Request implements Client {
   // After request, your middleware will be executed.
   Request middleware(List<Middleware> middleware);
 
+  void cleanMiddleware();
+
   /**
      * A callback for the check [Response.statusCode]. Callback will called after request and
         make throw
@@ -105,6 +107,8 @@ class _Request implements Request {
 
   List<Response> get responses => _responses;
 
+  List<Middleware> get middlewareTest => _middleware;
+
   IOClient get ioClient => _client;
 
   _Request() {
@@ -119,6 +123,10 @@ class _Request implements Request {
     _middleware = middleware;
 
     return this;
+  }
+
+  void cleanMiddleware() {
+    _middleware = [];
   }
 
   Request cleanFluent(bool v) {
